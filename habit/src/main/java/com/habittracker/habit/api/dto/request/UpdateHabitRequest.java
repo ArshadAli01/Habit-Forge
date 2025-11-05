@@ -11,8 +11,10 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @ToString
 public class UpdateHabitRequest {
+
     @Size(min = 3, max = 100, message = "Habit name must be between 3 and 100 characters")
     private String name;
 

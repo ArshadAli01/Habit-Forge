@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.stream.Collectors;
 
 /**
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
  *
  * Catches all exceptions and returns consistent ErrorResponse.
  * Maps to proper HTTP status codes.
+ * All timestamps are in UTC.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,7 +27,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex, WebRequest request) {
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.NOT_FOUND.value())
                 .error(HttpStatus.NOT_FOUND.getReasonPhrase())
                 .message(ex.getMessage())
@@ -37,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ErrorResponse> handleConflict(DuplicateResourceException ex, WebRequest request) {
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.CONFLICT.value())
                 .error(HttpStatus.CONFLICT.getReasonPhrase())
                 .message(ex.getMessage())
@@ -49,7 +51,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, WebRequest request) {
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
                 .message(ex.getMessage())
@@ -65,7 +67,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
 
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .error("Validation Failed")
                 .message(message)
@@ -81,7 +83,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
 
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .error("Validation Failed")
                 .message(message)
@@ -93,7 +95,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex, WebRequest request) {
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
                 .message("An unexpected error occurred")

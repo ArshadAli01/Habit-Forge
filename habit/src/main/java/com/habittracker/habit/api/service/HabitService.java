@@ -11,6 +11,7 @@ import java.util.Optional;
  * Business ops: CRUD with ownership, max 50 active.
  */
 public interface HabitService {
+    Long getCurrentUserId();
     HabitResponse create(CreateHabitRequest request, Long currentUserId);
     PagedHabitResponse getAll(Long currentUserId, int page, int size, Boolean isActive, String frequency, String sortBy, String sortDirection);
     Optional<HabitResponse> getById(Long id, Long currentUserId);

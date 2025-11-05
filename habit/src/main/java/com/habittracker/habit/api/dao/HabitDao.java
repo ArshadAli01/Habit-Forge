@@ -10,8 +10,9 @@ import java.util.Optional;
  */
 public interface HabitDao {
     Habit save(Habit habit);
+    Habit update(Habit habit);
     Optional<Habit> findById(Long id);
+    Optional<Habit> findByUserIdAndName(Long userId, String name);
     List<Habit> findByUserId(Long userId, Boolean isActive, String frequency, int offset, int limit, String sortBy, String sortDirection);
     long countByUserId(Long userId, Boolean isActive, String frequency);
-    int softDeleteById(Long id);  // Set isActive = false
 }

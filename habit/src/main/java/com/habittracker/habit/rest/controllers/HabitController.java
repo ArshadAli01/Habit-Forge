@@ -5,19 +5,24 @@ import com.habittracker.habit.api.dto.request.UpdateHabitRequest;
 import com.habittracker.habit.api.dto.response.HabitResponse;
 import com.habittracker.habit.api.dto.response.PagedHabitResponse;
 import com.habittracker.habit.api.service.HabitService;
+import com.habittracker.habit.core.constants.HabitConstants;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
 /**
  * Habit REST Controller.
- * All endpoints require auth; userId from SecurityContext.
+ * All endpoints require auth; userId from SecurityContext via service.
  */
 @RestController
 @RequestMapping("/api/v1/habits")
+@Validated
 public class HabitController {
 
     private final HabitService habitService;
@@ -28,17 +33,17 @@ public class HabitController {
 
     @PostMapping
     public ResponseEntity<HabitResponse> create(@Valid @RequestBody CreateHabitRequest request) {
-        Long userId = habitService.getCurrentUserId();  // From auth
+        Long userId = habitService.getCurrentUserId();
         HabitResponse response = habitService.create(request, userId);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping
     public ResponseEntity<PagedHabitResponse> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(defaultValue = "created_at") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(required = false) Boolean isActive,
             @RequestParam(required = false) String frequency) {
         Long userId = habitService.getCurrentUserId();
@@ -55,7 +60,9 @@ public class HabitController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<HabitResponse> update(@PathVariable Long id, @Valid @RequestBody UpdateHabitRequest request) {
+    public ResponseEntity<HabitResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateHabitRequest request) {
         Long userId = habitService.getCurrentUserId();
         HabitResponse response = habitService.update(id, request, userId);
         return ResponseEntity.ok(response);
