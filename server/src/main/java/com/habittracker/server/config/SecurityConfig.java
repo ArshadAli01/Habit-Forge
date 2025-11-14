@@ -1,4 +1,4 @@
-package com.habittracker.user.core.config;
+package com.habittracker.server.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
