@@ -2,22 +2,19 @@ package com.habittracker.user.core.dao;
 
 import com.habittracker.user.api.dao.UserDao;
 import com.habittracker.user.api.entity.User;
-
-import com.habittracker.common.utility.AuditFieldUtility;
-
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * User DAO Implementation.
- * Uses JdbcTemplate for queries; SqlDaoHelper for save/update (assuming universal template).
- * RowMapper for User.
+ * Uses NamedParameterJdbcTemplate for consistency with Habit module.
  */
 @Repository
 public class UserDaoImpl implements UserDao {
@@ -25,7 +22,6 @@ public class UserDaoImpl implements UserDao {
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedJdbcTemplate;
 
-    // RowMapper for User
     private static final RowMapper<User> USER_ROW_MAPPER = (rs, rowNum) -> {
         User user = new User();
         user.setId(rs.getLong("id"));
@@ -48,42 +44,61 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public User save(User user) {
-        AuditFieldUtility.initialize(user, "system");
         String sql = "INSERT INTO users (name, email, password, created_at, updated_at, created_by, updated_by) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
-        Long id = jdbcTemplate.queryForObject(sql, Long.class,
-                user.getName(), user.getEmail(), user.getPassword(),
-                user.getCreatedAt(), user.getUpdatedAt(), user.getCreatedBy(), user.getUpdatedBy());
+                "VALUES (:name, :email, :password, :createdAt, :updatedAt, :createdBy, :updatedBy) RETURNING id";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("name", user.getName());
+        params.put("email", user.getEmail());
+        params.put("password", user.getPassword());
+        params.put("createdAt", user.getCreatedAt());
+        params.put("updatedAt", user.getUpdatedAt());
+        params.put("createdBy", user.getCreatedBy());
+        params.put("updatedBy", user.getUpdatedBy());
+
+        Long id = namedJdbcTemplate.queryForObject(sql, params, Long.class);
         user.setId(id);
         return user;
     }
 
     @Override
     public Optional<User> findById(Long id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
+        String sql = "SELECT * FROM users WHERE id = :id";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", id);
+
         try {
-            User user = jdbcTemplate.queryForObject(sql, USER_ROW_MAPPER, id);
+            User user = namedJdbcTemplate.queryForObject(sql, params, USER_ROW_MAPPER);
             return Optional.of(user);
-        } catch (Exception e) {
+        } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
 
     @Override
     public Optional<User> findByEmail(String email) {
-        String sql = "SELECT * FROM users WHERE email = ?";
+        String sql = "SELECT * FROM users WHERE email = :email";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("email", email.trim().toLowerCase());
+
         try {
-            User user = jdbcTemplate.queryForObject(sql, USER_ROW_MAPPER, email);
+            User user = namedJdbcTemplate.queryForObject(sql, params, USER_ROW_MAPPER);
             return Optional.of(user);
-        } catch (Exception e) {
+        } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
+        String sql = "SELECT COUNT(*) FROM users WHERE email = :email";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("email", email.trim().toLowerCase());
+
+        Long count = namedJdbcTemplate.queryForObject(sql, params, Long.class);
         return count != null && count > 0;
     }
 }

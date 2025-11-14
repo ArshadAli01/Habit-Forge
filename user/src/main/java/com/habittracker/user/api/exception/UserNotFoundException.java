@@ -1,6 +1,12 @@
 package com.habittracker.user.api.exception;
 
-public class UserNotFoundException extends RuntimeException {
+import com.habittracker.common.exception.EntityNotFoundException;
+
+/**
+ * User-specific NotFoundException.
+ * Extends EntityNotFoundException so it's caught by the global handler.
+ */
+public class UserNotFoundException extends EntityNotFoundException {
     public UserNotFoundException(String message) {
         super(message);
     }

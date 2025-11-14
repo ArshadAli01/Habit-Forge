@@ -13,6 +13,8 @@ import com.habittracker.habit.core.constants.HabitConstants;
 import com.habittracker.common.exception.BusinessException;
 import com.habittracker.common.exception.DuplicateResourceException;
 import com.habittracker.common.utility.AuditFieldUtility;
+import com.habittracker.user.api.entity.User;
+import com.habittracker.user.api.service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -34,10 +36,13 @@ public class HabitServiceImpl implements HabitService {
 
     private final HabitDao habitDao;
     private final HabitConverter converter;
+    private final UserService userService;
 
-    public HabitServiceImpl(HabitDao habitDao, HabitConverter converter) {
+    // UPDATE CONSTRUCTOR
+    public HabitServiceImpl(HabitDao habitDao, HabitConverter converter, UserService userService) {
         this.habitDao = habitDao;
         this.converter = converter;
+        this.userService = userService;
     }
 
     @Override
@@ -48,11 +53,19 @@ public class HabitServiceImpl implements HabitService {
             throw new BusinessException("User not authenticated");
         }
 
-        // TODO: Replace with actual implementation when user module is integrated
-        // Example: return ((CustomUserDetails) auth.getPrincipal()).getId();
-        // For now, returning placeholder
-        log.warn("Using placeholder user ID - implement proper authentication integration");
-        return 1L;
+        // Get email from authentication
+        String email = auth.getName();
+        log.debug("Getting user ID for email: {}", email);
+
+        // Find user by email
+        Optional<User> userOpt = userService.findByEmail(email);
+        User user = userOpt.orElseThrow(() -> {
+            log.error("Authenticated user not found in database: {}", email);
+            return new BusinessException("Authenticated user not found: " + email);
+        });
+
+        log.debug("Found user ID: {} for email: {}", user.getId(), email);
+        return user.getId();
     }
 
     @Override

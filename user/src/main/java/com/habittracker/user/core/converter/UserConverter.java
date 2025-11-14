@@ -7,14 +7,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * Converter: DTO ↔ Entity.
+ * Includes input sanitization and normalization.
  */
 @Component
 public class UserConverter {
 
     public User toEntity(CreateUserRequest request) {
         return User.builder()
-                .name(request.getName().trim())
-                .email(request.getEmail().trim().toLowerCase())
+                .name(sanitize(request.getName()))
+                .email(normalizeEmail(request.getEmail()))
                 .build();
     }
 
@@ -25,5 +26,26 @@ public class UserConverter {
                 .email(user.getEmail())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Sanitize input by trimming whitespace.
+     * Returns null for null/blank inputs.
+     */
+    private String sanitize(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        return input.trim();
+    }
+
+    /**
+     * Normalize email: trim and lowercase.
+     */
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 }

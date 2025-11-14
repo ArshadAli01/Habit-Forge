@@ -13,6 +13,7 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @ToString
 public class CreateUserRequest {
     @NotBlank(message = "Name is required")
@@ -21,9 +22,10 @@ public class CreateUserRequest {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
+    @Size(max = 255, message = "Email must not exceed 255 characters")
     private String email;
 
     @NotBlank(message = "Password is required")
-    @PasswordValidator(message = "Password must be at least 8 characters with 1 uppercase and 1 number")
+    @PasswordValidator(message = "Password must be at least 8 characters with 1 uppercase and 1 digit")
     private String password;
 }
