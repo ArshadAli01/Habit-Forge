@@ -8,6 +8,7 @@ import com.habittracker.user.api.service.UserService;
 import com.habittracker.user.api.dao.UserDao;
 
 import com.habittracker.user.core.converter.UserConverter;
+import com.habittracker.user.core.security.CustomUserDetails;
 import com.habittracker.common.exception.BusinessException;
 import com.habittracker.common.exception.DuplicateResourceException;
 import com.habittracker.common.utility.AuditFieldUtility;
@@ -82,15 +83,18 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("User not authenticated");
         }
 
-        // For now, principal is just the email string until JWT is implemented
-        String email = auth.getName();
-        log.debug("Fetching profile for email: {}", email);
+        // Get CustomUserDetails from authentication
+        Object principal = auth.getPrincipal();
 
-        Optional<User> userOpt = userDao.findByEmail(email);
-        User user = userOpt.orElseThrow(() -> {
-            log.error("User not found for email: {}", email);
-            return new UserNotFoundException("User not found: " + email);
-        });
+        if (!(principal instanceof CustomUserDetails)) {
+            log.error("Principal is not CustomUserDetails: {}", principal.getClass().getName());
+            throw new BusinessException("Invalid authentication principal");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) principal;
+        User user = userDetails.getUser();
+
+        log.debug("Fetching profile for user ID: {}, Email: {}", user.getId(), user.getEmail());
 
         return converter.toResponse(user);
     }

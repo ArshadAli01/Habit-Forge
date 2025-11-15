@@ -35,7 +35,22 @@ public class HabitDaoImpl implements HabitDao {
         habit.setUserId(rs.getLong("user_id"));
         habit.setName(rs.getString("name"));
         habit.setDescription(rs.getString("description"));
-        habit.setFrequency(Frequency.valueOf(rs.getString("frequency")));
+
+        // FIX 1: Add defensive code to prevent 500 on bad/null database data for Frequency enum.
+        String freqString = rs.getString("frequency");
+        if (freqString != null) {
+            try {
+                habit.setFrequency(Frequency.valueOf(freqString));
+            } catch (IllegalArgumentException e) {
+                // If the frequency value in the database is corrupt/invalid,
+                // setting it to null prevents the 500 Internal Server Error.
+                habit.setFrequency(null);
+            }
+        } else {
+            habit.setFrequency(null); // Explicitly handle null from DB
+        }
+        // END FIX 1
+
         habit.setIsActive(rs.getBoolean("is_active"));
         habit.setCreatedAt(rs.getTimestamp("created_at") != null ?
                 rs.getTimestamp("created_at").toLocalDateTime() : null);
@@ -136,11 +151,20 @@ public class HabitDaoImpl implements HabitDao {
     @Override
     public List<Habit> findByUserId(Long userId, Boolean isActive, String frequency,
                                     int offset, int limit, String sortBy, String sortDirection) {
+        // FIX 2: Handle null sort parameters defensively to prevent NullPointerException
+
+        // Safely resolve sortDirection to avoid NullPointerException if no parameter is passed.
+        String resolvedSortDirection = (sortDirection == null) ? "DESC" : sortDirection;
+
         // SQL Injection Protection - whitelist validation
-        String safeSortBy = ALLOWED_SORT_FIELDS.contains(sortBy) ? sortBy : "created_at";
-        String safeSortDirection = ALLOWED_DIRECTIONS.contains(sortDirection.toUpperCase())
-                ? sortDirection.toUpperCase()
+        String safeSortBy = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "created_at";
+
+        // Use the resolvedSortDirection to prevent NPE when calling toUpperCase() on a null input.
+        String safeSortDirection = ALLOWED_DIRECTIONS.contains(resolvedSortDirection.toUpperCase())
+                ? resolvedSortDirection.toUpperCase()
                 : "DESC";
+
+        // END FIX 2
 
         StringBuilder sql = new StringBuilder("SELECT * FROM habits WHERE user_id = :userId");
         Map<String, Object> params = new HashMap<>();

@@ -8,3 +8,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+
+  logging:
+    level:
+      org.springframework: DEBUG
+      org.springframework.jdbc: DEBUG
+      com.habittracker: DEBUG

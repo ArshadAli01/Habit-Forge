@@ -13,8 +13,7 @@ import com.habittracker.habit.core.constants.HabitConstants;
 import com.habittracker.common.exception.BusinessException;
 import com.habittracker.common.exception.DuplicateResourceException;
 import com.habittracker.common.utility.AuditFieldUtility;
-import com.habittracker.user.api.entity.User;
-import com.habittracker.user.api.service.UserService;
+import com.habittracker.user.core.security.CustomUserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -36,13 +35,10 @@ public class HabitServiceImpl implements HabitService {
 
     private final HabitDao habitDao;
     private final HabitConverter converter;
-    private final UserService userService;
 
-    // UPDATE CONSTRUCTOR
-    public HabitServiceImpl(HabitDao habitDao, HabitConverter converter, UserService userService) {
+    public HabitServiceImpl(HabitDao habitDao, HabitConverter converter) {
         this.habitDao = habitDao;
         this.converter = converter;
-        this.userService = userService;
     }
 
     @Override
@@ -50,22 +46,23 @@ public class HabitServiceImpl implements HabitService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            log.error("Attempted to get user ID without authentication");
             throw new BusinessException("User not authenticated");
         }
 
-        // Get email from authentication
-        String email = auth.getName();
-        log.debug("Getting user ID for email: {}", email);
+        // Get CustomUserDetails from authentication
+        Object principal = auth.getPrincipal();
 
-        // Find user by email
-        Optional<User> userOpt = userService.findByEmail(email);
-        User user = userOpt.orElseThrow(() -> {
-            log.error("Authenticated user not found in database: {}", email);
-            return new BusinessException("Authenticated user not found: " + email);
-        });
+        if (!(principal instanceof CustomUserDetails)) {
+            log.error("Principal is not CustomUserDetails: {}", principal.getClass().getName());
+            throw new BusinessException("Invalid authentication principal");
+        }
 
-        log.debug("Found user ID: {} for email: {}", user.getId(), email);
-        return user.getId();
+        CustomUserDetails userDetails = (CustomUserDetails) principal;
+        Long userId = userDetails.getId();
+
+        log.debug("Current user ID: {}", userId);
+        return userId;
     }
 
     @Override
