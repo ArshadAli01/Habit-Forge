@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
@@ -18,6 +19,7 @@ import java.util.*;
  * Includes SQL injection protection via whitelisting.
  */
 @Repository
+@Slf4j // Added Slf4j annotation
 public class HabitDaoImpl implements HabitDao {
 
     private final JdbcTemplate jdbcTemplate;
@@ -44,10 +46,12 @@ public class HabitDaoImpl implements HabitDao {
             } catch (IllegalArgumentException e) {
                 // If the frequency value in the database is corrupt/invalid,
                 // setting it to null prevents the 500 Internal Server Error.
+                log.warn("DAO: Corrupt frequency value '{}' found for habit ID {}. Setting to null.", freqString, habit.getId());
                 habit.setFrequency(null);
             }
         } else {
             habit.setFrequency(null); // Explicitly handle null from DB
+            log.debug("DAO: Null frequency value found for habit ID {}. Setting to null.", habit.getId());
         }
         // END FIX 1
 
@@ -84,8 +88,10 @@ public class HabitDaoImpl implements HabitDao {
         params.put("createdBy", habit.getCreatedBy());
         params.put("updatedBy", habit.getUpdatedBy());
 
+        log.debug("DAO: Executing INSERT for new habit. User ID: {}", habit.getUserId());
         Long id = namedJdbcTemplate.queryForObject(sql, params, Long.class);
         habit.setId(id);
+        log.info("DAO: New habit saved with ID: {}", id);
         return habit;
     }
 
@@ -109,10 +115,13 @@ public class HabitDaoImpl implements HabitDao {
         params.put("updatedAt", habit.getUpdatedAt());
         params.put("updatedBy", habit.getUpdatedBy());
 
+        log.debug("DAO: Executing UPDATE for habit ID: {}", habit.getId());
         int updated = namedJdbcTemplate.update(sql, params);
         if (updated == 0) {
+            log.error("DAO: UPDATE failed. Habit ID {} not found in database.", habit.getId());
             throw new EntityNotFoundException("Habit not found: " + habit.getId());
         }
+        log.info("DAO: Habit ID {} updated successfully.", habit.getId());
 
         return habit;
     }
@@ -124,10 +133,13 @@ public class HabitDaoImpl implements HabitDao {
         Map<String, Object> params = new HashMap<>();
         params.put("id", id);
 
+        log.debug("DAO: Executing findById({}) query.", id);
         try {
             Habit habit = namedJdbcTemplate.queryForObject(sql, params, HABIT_ROW_MAPPER);
+            log.debug("DAO: Habit {} found.", id);
             return Optional.of(habit);
         } catch (EmptyResultDataAccessException e) {
+            log.debug("DAO: Habit {} not found.", id);
             return Optional.empty();
         }
     }
@@ -140,10 +152,13 @@ public class HabitDaoImpl implements HabitDao {
         params.put("userId", userId);
         params.put("name", name);
 
+        log.debug("DAO: Executing findByUserIdAndName query. User ID: {}, Name: {}", userId, name);
         try {
             Habit habit = namedJdbcTemplate.queryForObject(sql, params, HABIT_ROW_MAPPER);
+            log.debug("DAO: Habit found for User ID {} with Name '{}'.", userId, name);
             return Optional.of(habit);
         } catch (EmptyResultDataAccessException e) {
+            log.debug("DAO: No habit found for User ID {} with Name '{}'.", userId, name);
             return Optional.empty();
         }
     }
@@ -151,7 +166,9 @@ public class HabitDaoImpl implements HabitDao {
     @Override
     public List<Habit> findByUserId(Long userId, Boolean isActive, String frequency,
                                     int offset, int limit, String sortBy, String sortDirection) {
+
         // FIX 2: Handle null sort parameters defensively to prevent NullPointerException
+        log.debug("DAO: Starting findByUserId. Input sort: sortBy='{}', sortDirection='{}'", sortBy, sortDirection);
 
         // Safely resolve sortDirection to avoid NullPointerException if no parameter is passed.
         String resolvedSortDirection = (sortDirection == null) ? "DESC" : sortDirection;
@@ -164,6 +181,7 @@ public class HabitDaoImpl implements HabitDao {
                 ? resolvedSortDirection.toUpperCase()
                 : "DESC";
 
+        log.debug("DAO: Sort whitelisting applied. Safe sort: sortBy='{}', sortDirection='{}'", safeSortBy, safeSortDirection);
         // END FIX 2
 
         StringBuilder sql = new StringBuilder("SELECT * FROM habits WHERE user_id = :userId");
@@ -173,16 +191,20 @@ public class HabitDaoImpl implements HabitDao {
         if (isActive != null) {
             sql.append(" AND is_active = :isActive");
             params.put("isActive", isActive);
+            log.debug("DAO: Filter added: is_active = {}", isActive);
         }
         if (frequency != null) {
             sql.append(" AND frequency = :frequency");
             params.put("frequency", frequency);
+            log.debug("DAO: Filter added: frequency = {}", frequency);
         }
 
         sql.append(" ORDER BY ").append(safeSortBy).append(" ").append(safeSortDirection);
         sql.append(" LIMIT :limit OFFSET :offset");
         params.put("limit", limit);
         params.put("offset", offset);
+
+        log.debug("DAO: Executing paginated query. User ID: {}, Offset: {}, Limit: {}, Final SQL: {}", userId, offset, limit, sql.toString());
 
         return namedJdbcTemplate.query(sql.toString(), params, HABIT_ROW_MAPPER);
     }
@@ -202,7 +224,10 @@ public class HabitDaoImpl implements HabitDao {
             params.put("frequency", frequency);
         }
 
+        log.debug("DAO: Executing countByUserId query. User ID: {}, IsActive: {}, Frequency: {}", userId, isActive, frequency);
         Long count = namedJdbcTemplate.queryForObject(sql.toString(), params, Long.class);
-        return count != null ? count : 0L;
+        long result = count != null ? count : 0L;
+        log.debug("DAO: Total count for user {} is {}", userId, result);
+        return result;
     }
 }

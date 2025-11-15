@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
  * All timestamps are in UTC.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -94,12 +96,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex, WebRequest request) {
+        String path = request.getDescription(false).replace("uri=", "");
+        log.error("Unexpected error at path '{}': {}", path, ex.getMessage(), ex); // Correct: Two placeholders, then exception
+
         ErrorResponse error = ErrorResponse.builder()
                 .timestamp(Instant.now().atOffset(ZoneOffset.UTC).toLocalDateTime())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
                 .message("An unexpected error occurred")
-                .path(request.getDescription(false).replace("uri=", ""))
+                .path(path)
                 .build();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
